@@ -1,0 +1,54 @@
+name: PoC - CI/CD Command Injection (Safe Harbor)
+
+# This PoC reproduces the exact vulnerability pattern from PlaytikaOSS/maven-plugins release.yml
+# Trigger: workflow_dispatch with version input (same as original)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (injection point)"
+        required: true
+
+jobs:
+  poc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # VULNERABLE STEP 1: Shell injection (identical pattern to original)
+      # Original: ./mvnw versions:set -DnewVersion=${{ github.event.inputs.version }}
+      - name: "Vulnerable: Shell Command Injection"
+        run: |
+          echo "=== VULNERABILITY PROOF ==="
+          echo "Input was directly interpolated into shell:"
+          echo "Simulating: mvnw versions:set -DnewVersion=${{ github.event.inputs.version }}"
+          echo "=== END ==="
+
+      # VULNERABLE STEP 2: JavaScript injection (identical pattern to original)  
+      # Original: if (release.name === "${{ github.event.inputs.version }}")
+      - name: "Vulnerable: JavaScript Code Injection"
+        uses: actions/github-script@v8
+        with:
+          script: |
+            console.log("=== VULNERABILITY PROOF ===");
+            console.log("Input was interpolated into JS source:");
+            const test = "${{ github.event.inputs.version }}";
+            console.log("Value: " + test);
+            console.log("=== END ===");
+
+      # Machine permissions proof (per Playtika PoC guidelines)
+      - name: "Machine Access Proof"
+        run: |
+          echo "=== MACHINE PERMISSIONS (per Playtika PoC guidelines) ==="
+          echo "Execute:"
+          id
+          hostname
+          echo "Read:"
+          cat /proc/self/maps | head -5
+          echo "Write:"
+          touch /tmp/tatsuya3817178
+          ls -la /tmp/tatsuya3817178
+          echo "=== ENVIRONMENT ==="
+          env | grep -E "GITHUB_|RUNNER_|ACTIONS_" | sort
+          echo "=== In real attack, secrets.RELEASE_PERSONAL_ACCESS_TOKEN etc would be here ==="
